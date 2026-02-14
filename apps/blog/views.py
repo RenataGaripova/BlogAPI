@@ -1,9 +1,13 @@
 # Python modules
-from typing import Any, Optional, Sequence
+import json
 import logging
+import redis
+from typing import Any, Optional, Sequence
 
 # Django modules
+from django_ratelimit.decorators import ratelimit
 from django.db.models import QuerySet
+from django.core.cache import cache
 
 # DRF modules
 from rest_framework.viewsets import ViewSet
@@ -40,9 +44,32 @@ class PostViewSet(ViewSet):
     pagination_class = CustomCursorPagination
     lookup_field = "slug"
 
+    def get_cache_version(self):
+        """Returns cache version."""
+        return cache.get("posts_list_version", 1)
+
+    def get_cache_key(self, request: DRFRequest) -> str:
+        """Returns cache key for a viewset."""
+        cache_version = self.get_cache_version()
+        if request.user.is_authenticated:
+            user = request.user.id
+        else:
+            user = "anon"
+
+        return f"posts_list_version{cache_version}_user_{user}_{request.query_params.urlencode()}"
+
+    def increase_cache_version(self):
+        """Increases cache version."""
+        try:
+            cache.incr("posts_list_version")
+        except ValueError:
+            cache.set("posts_list_version", 2)
+
     def list(
         self,
         request: DRFRequest,
+        cursor_id: Optional[int] = None,
+        page_size: int = 20,
         *args: tuple[Any, ...],
         **kwargs: dict[Any, Any],
     ) -> DRFResponse:
@@ -61,18 +88,38 @@ class PostViewSet(ViewSet):
             DRFResponse -
                 A response containing a paginated list of posts.
         """
+
+        cache_key = self.get_cache_key(request=request)
+        timeout = 60
+
+        data = cache.get(cache_key)
+
+        if data:
+            return DRFResponse(data)
+
         posts: QuerySet[Post] = Post.objects.all()
 
         paginator: CustomCursorPagination = self.pagination_class()
         page: Optional[Sequence[Any]] = paginator.paginate_queryset(
             queryset=posts, request=request, view=self
         )
-        serializer: PostReadSerializer = PostReadSerializer(
-            page,
-            many=True,
-        )
-        return paginator.get_paginated_response(serializer.data)
+        if page is not None:
+            serializer: PostReadSerializer = PostReadSerializer(
+                page,
+                many=True,
+            )
+            response = paginator.get_paginated_response(serializer.data)
+        else:
+            serializer: PostReadSerializer = PostReadSerializer(
+                posts,
+                many=True,
+            )
+            response = DRFResponse(serializer.data)
+        # Manual cache set because of cursor pagination
+        cache.set(key=cache_key, value=response.data, timeout=timeout)
+        return response
 
+    @ratelimit(key="user", rate="20/m", method="POST", block=True)
     def create(
         self,
         request: DRFRequest,
@@ -107,6 +154,7 @@ class PostViewSet(ViewSet):
             )
             raise
         serializer.save(author=request.user)
+        self.increase_cache_version()
         logger.info("New post was created: %s", serializer.validated_data)
         return DRFResponse(
             data=serializer.data,
@@ -158,6 +206,7 @@ class PostViewSet(ViewSet):
             )
             raise
         serializer.save()
+        self.increase_cache_version()
         logger.info("Post with slug %s was updated.", slug)
         return DRFResponse(
             data=serializer.data,
@@ -215,6 +264,12 @@ class CommentViewSet(ViewSet):
         IsAuthorOrReadOnly,
     )
     pagination_class = CustomCursorPagination
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.redis_client = redis.Redis(
+            host="localhost", port=6379, db=0, decode_responses=True
+        )
 
     def list(
         self,
@@ -301,6 +356,15 @@ class CommentViewSet(ViewSet):
                 serializer.errrors,
             )
             raise
+
+        channel = "comments"
+        message = {
+            "event": "create",
+            "data": serializer.data,
+            "user": request.user.id,
+        }
+
+        self.redis_client.publish(channel, json.dumps(message))
         serializer.save(author=request.user, post=post)
         logger.info("New comment was posted: %s", serializer.validated_data)
         return DRFResponse(

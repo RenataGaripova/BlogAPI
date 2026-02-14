@@ -24,6 +24,13 @@ class Category(AbstractBaseModel):
     )
     slug = SlugField(unique=True, verbose_name="Slug")
 
+    class Meta:
+        """Metadata."""
+
+        verbose_name_plural = "Categories"
+        default_related_name = "categories"
+        ordering = ("-created_at",)
+
 
 class Tag(AbstractBaseModel):
     """Tag model."""
@@ -34,6 +41,12 @@ class Tag(AbstractBaseModel):
         max_length=MAX_NAME_LENGTH, unique=True, verbose_name="Name"
     )
     slug = SlugField(unique=True, verbose_name="Slug")
+
+    class Meta:
+        """Metadata."""
+
+        default_related_name = "tags"
+        ordering = ("-created_at",)
 
 
 class Status(TextChoices):
@@ -69,6 +82,7 @@ class Post(AbstractBaseModel):
         """Metadata."""
 
         default_related_name = "posts"
+        ordering = ("-created_at",)
 
 
 class Comment(AbstractBaseModel):
