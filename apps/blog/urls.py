@@ -6,7 +6,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_nested.routers import NestedDefaultRouter
 
 # Project modules
-from .views import PostViewSet, CommentViewSet
+from .views import PostViewSet, CommentViewSet, get_stats
 
 
 router_v1 = DefaultRouter()
@@ -26,4 +26,9 @@ comments_router_v1.register(
 urlpatterns = [
     path("", include(router_v1.urls)),
     path("", include(comments_router_v1.urls)),
+    path(
+        "stats/",
+        get_stats,
+        name="stats",
+    ),
 ]

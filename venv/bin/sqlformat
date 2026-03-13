@@ -1,4 +1,4 @@
-#!/Users/renatagaripova/Desktop/blog-api/hw1/venv/bin/python3.12
+#!/Users/renatagaripova/Desktop/blog-api/hw2/venv/bin/python3.12
 # -*- coding: utf-8 -*-
 import re
 import sys

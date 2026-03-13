@@ -19,10 +19,25 @@ from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
 )
+from drf_spectacular.utils import (
+    OpenApiResponse,
+    extend_schema,
+)
+from rest_framework.status import (
+    HTTP_403_FORBIDDEN,
+    HTTP_405_METHOD_NOT_ALLOWED,
+    HTTP_429_TOO_MANY_REQUESTS,
+)
 
 # Project modules
+from apps.abstracts.serializers import (
+    ErrorDetailSerializer,
+    ResponseUserRegistrationSerializer,
+)
 from .serializers import UserRegistrationSerializer
 from .models import CustomUser
+from .tools import send_registration_email
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +54,30 @@ class RateLimitTokenObtainPairView(TokenObtainPairView):
 
 
 class CustomUserViewSet(ViewSet):
+    @extend_schema(
+        summary="Registrate a new user",
+        description="The endpoint is responsible for users registration.",
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=ResponseUserRegistrationSerializer(many=False),
+                description="Successfully. You have signed up.",
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=ErrorDetailSerializer,
+                description="Forbidden. You do not have permission to perform this action.",
+            ),
+            HTTP_405_METHOD_NOT_ALLOWED: OpenApiResponse(
+                response=ErrorDetailSerializer,
+                description="Method not allowed. You used wrong HTTP request type."
+                "Only POST can be used to reach this endpoint.",
+            ),
+            HTTP_429_TOO_MANY_REQUESTS: OpenApiResponse(
+                description="Server receives too many requests.",
+                response=ErrorDetailSerializer,
+            ),
+        },
+        tags=["Users"],
+    )
     @action(
         methods=("post",),
         detail=False,
@@ -96,6 +135,19 @@ class CustomUserViewSet(ViewSet):
         response_data["refresh"] = str(refresh_token)
 
         logger.info("User registered: %s", user.email)
+
+        send_registration_email(
+            subject="Registration.",
+            recipient_list=[
+                response_data.get("email"),
+            ],
+            context={
+                "receiver_name": f"{response_data.get('first_name')} {response_data.get('first_name')}"
+            },
+            html_template_name="mails/welcome.html",
+            language=response_data.get("preferred_language") or "en",
+        )
+
         return DRFResponse(
             data=response_data,
             status=HTTP_200_OK,

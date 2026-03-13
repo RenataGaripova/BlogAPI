@@ -8,6 +8,7 @@ from django.db.models import (
     ManyToManyField,
     TextChoices,
 )
+from django.utils.translation import gettext_lazy as _
 
 # Project modules
 from apps.abstracts.models import AbstractBaseModel
@@ -19,10 +20,24 @@ class Category(AbstractBaseModel):
 
     MAX_NAME_LENGTH = 100
 
-    name = CharField(
-        max_length=MAX_NAME_LENGTH, unique=True, verbose_name="Name"
+    name_en = CharField(
+        max_length=MAX_NAME_LENGTH, unique=True, verbose_name=_("Name")
     )
-    slug = SlugField(unique=True, verbose_name="Slug")
+    name_ru = CharField(
+        max_length=MAX_NAME_LENGTH,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name=_("Name (Russian)"),
+    )
+    name_kz = CharField(
+        max_length=MAX_NAME_LENGTH,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name=_("Name (Kazakh)"),
+    )
+    slug = SlugField(unique=True, verbose_name=_("Slug"), auto_created=True)
 
     class Meta:
         """Metadata."""
@@ -38,9 +53,9 @@ class Tag(AbstractBaseModel):
     MAX_NAME_LENGTH = 50
 
     name = CharField(
-        max_length=MAX_NAME_LENGTH, unique=True, verbose_name="Name"
+        max_length=MAX_NAME_LENGTH, unique=True, verbose_name=_("Name")
     )
-    slug = SlugField(unique=True, verbose_name="Slug")
+    slug = SlugField(unique=True, auto_created=True, verbose_name=_("Slug"))
 
     class Meta:
         """Metadata."""
@@ -63,15 +78,15 @@ class Post(AbstractBaseModel):
     MAX_CODE_LENGTH = 4
 
     author = ForeignKey(
-        to=CustomUser, on_delete=CASCADE, verbose_name="Author"
+        to=CustomUser, on_delete=CASCADE, verbose_name=_("Author")
     )
-    slug = SlugField(unique=True, verbose_name="Slug")
-    title = CharField(max_length=MAX_TITLE_LENGTH, verbose_name="Title")
-    body = TextField(verbose_name="Body")
+    slug = SlugField(unique=True, verbose_name=_("Slug"), auto_created=True)
+    title = CharField(max_length=MAX_TITLE_LENGTH, verbose_name=_("Title"))
+    body = TextField(verbose_name=_("Body"))
     category = ForeignKey(
-        to=Category, on_delete=CASCADE, verbose_name="Category"
+        to=Category, on_delete=CASCADE, verbose_name=_("Category")
     )
-    tags = ManyToManyField(to=Tag, blank=True, verbose_name="Tags")
+    tags = ManyToManyField(to=Tag, blank=True, verbose_name=_("Tags"))
     status = CharField(
         choices=Status.choices,
         default=Status.DRAFT,
@@ -88,11 +103,11 @@ class Post(AbstractBaseModel):
 class Comment(AbstractBaseModel):
     """Comment model."""
 
-    post = ForeignKey(to=Post, on_delete=CASCADE, verbose_name="Post")
+    post = ForeignKey(to=Post, on_delete=CASCADE, verbose_name=_("Post"))
     author = ForeignKey(
-        to=CustomUser, on_delete=CASCADE, verbose_name="Author"
+        to=CustomUser, on_delete=CASCADE, verbose_name=_("Author")
     )
-    body = TextField(verbose_name="Body")
+    body = TextField(verbose_name=_("Body"))
 
     class Meta:
         """Metadata."""

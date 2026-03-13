@@ -34,6 +34,8 @@ class UserRegistrationSerializer(ModelSerializer):
             "last_name",
             "password",
             "date_joined",
+            "preffered_language",
+            "timezone",
         )
 
     def validate_password(self, value: str) -> str:

@@ -7,6 +7,8 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
+from django.utils.translation import gettext_lazy as _
+from zoneinfo import available_timezones
 from django.db.models import (
     CharField,
     EmailField,
@@ -31,13 +33,13 @@ class CustomUserManager(BaseUserManager):
         """Creates and saves a User with the given data."""
 
         if not email:
-            raise ValueError("Users must have an email address")
+            raise ValueError(_("Users must have an email address"))
         if not username:
-            raise ValueError("Users must have a username")
+            raise ValueError(_("Users must have a username"))
         if not first_name:
-            raise ValueError("Users must have a first name")
+            raise ValueError(_("Users must have a first name"))
         if not last_name:
-            raise ValueError("Users must have a last name")
+            raise ValueError(_("Users must have a last name"))
 
         created_user: "CustomUser" = self.model(
             email=self.normalize_email(email),
@@ -66,20 +68,20 @@ class CustomUserManager(BaseUserManager):
         kwargs.setdefault("is_superuser", True)
 
         if kwargs.get("is_active") is not True:
-            raise ValueError("is_active should be True for superuser")
+            raise ValueError(_("is_active should be True for superuser"))
         if kwargs.get("is_staff") is not True:
-            raise ValueError("is_staff should be True for superuser")
+            raise ValueError(_("is_staff should be True for superuser"))
         if kwargs.get("is_superuser") is not True:
-            raise ValueError("is_superuser should be True for superuser")
+            raise ValueError(_("is_superuser should be True for superuser"))
 
         if not email:
-            raise ValueError("Users must have an email address")
+            raise ValueError(_("Users must have an email address"))
         if not username:
-            raise ValueError("Users must have a username")
+            raise ValueError(_("Users must have a username"))
         if not first_name:
-            raise ValueError("Users must have a first name")
+            raise ValueError(_("Users must have a first name"))
         if not last_name:
-            raise ValueError("Users must have a last name")
+            raise ValueError(_("Users must have a last name"))
 
         created_user: "CustomUser" = self.model(
             email=self.normalize_email(email),
@@ -103,33 +105,55 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     MAX_USERNAME_LENGTH = 32
     MAX_EMAIL_LENGTH = 64
     MAX_PASSWORD_LENGTH = 128
+    MAX_LANG_LENGTH = 5
+    MAX_TIMEZONE_LENGTH = 100
+    PREFFERED_LANGUAGES = ("en", "ru", "kz")
+    TIMEZONES = ((zone, zone) for zone in available_timezones())
 
-    username = CharField(
+    username: CharField = CharField(
         max_length=MAX_USERNAME_LENGTH,
         unique=True,
-        verbose_name="Username",
+        verbose_name=_("Username"),
     )
-    email = EmailField(
+    email: EmailField = EmailField(
         max_length=MAX_EMAIL_LENGTH,
         unique=True,
-        verbose_name="Email",
+        verbose_name=_("Email"),
     )
-    first_name = CharField(
+    first_name: CharField = CharField(
         max_length=MAX_FIRST_NAME_LENGTH,
-        verbose_name="First name",
+        verbose_name=_("First name"),
     )
-    last_name = CharField(
+    last_name: CharField = CharField(
         max_length=MAX_LAST_NAME_LENGTH,
-        verbose_name="Last name",
+        verbose_name=_("Last name"),
     )
-    is_active = BooleanField(default=True, verbose_name="Is user active?")
-    is_staff = BooleanField(default=False, verbose_name="Is staff?")
-    date_joined = DateTimeField(auto_now_add=True)
-    avatar = ImageField(
-        upload_to="users",
+    is_active: BooleanField = BooleanField(
+        default=True, verbose_name=_("Is user active?")
+    )
+    is_staff: BooleanField = BooleanField(
+        default=False, verbose_name=_("Is staff?")
+    )
+    date_joined: DateTimeField = DateTimeField(auto_now_add=True)
+    avatar: ImageField = ImageField(
+        upload_to=_("users"),
         blank=True,
         null=True,
-        verbose_name="Avatar",
+        verbose_name=_("Avatar"),
+    )
+    preffered_language: CharField = CharField(
+        max_length=MAX_LANG_LENGTH,
+        choices=[(lang, lang) for lang in PREFFERED_LANGUAGES],
+        default="en",
+        verbose_name=_("Preffered language"),
+        help_text=_("Preffered language"),
+    )
+    timezone: CharField = CharField(
+        max_length=MAX_TIMEZONE_LENGTH,
+        choices=TIMEZONES,
+        default=_("UTC"),
+        verbose_name=_("Timezone"),
+        help_text=_("Timezone"),
     )
 
     objects = CustomUserManager()

@@ -27,12 +27,14 @@ DJANGO_AND_THIRD_PARTY_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework_simplejwt",
+    "drf_spectacular",
 ]
 
 PROJECT_APPS = [
     "apps.users.apps.UsersConfig",
     "apps.blog.apps.BlogConfig",
     "apps.abstracts.apps.AbstractsConfig",
+    "apps.core.apps.CoreConfig",
 ]
 INSTALLED_APPS = DJANGO_AND_THIRD_PARTY_APPS + PROJECT_APPS
 
@@ -43,6 +45,7 @@ INSTALLED_APPS = DJANGO_AND_THIRD_PARTY_APPS + PROJECT_APPS
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "apps.core.middlewares.CustomLocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -90,6 +93,21 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+USE_I18N = True
+USE_L10N = True
+
+ENGLISH_LANGUAGE_CODE = "en"
+
+LANGUAGES = [
+    ("en", "English"),
+    ("kz", "Kazakh"),
+    ("ru", "Russian"),
+]
+
+LOCALE_PATHS = [
+    os.path.join(BASE_DIR, "locale"),
+]
+
 # ----------------------------------------------
 # Static | Media
 #
@@ -100,3 +118,8 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.CustomUser"
+
+# ----------------------------------------------
+# Emails
+#
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
