@@ -585,11 +585,9 @@ async def get_blog_stats() -> dict[str, Any]:
         Comment.objects.count, thread_sensitive=True
     )()
     return {
-        {
-            "total_posts": posts_count,
-            "total_comments": comments_count,
-            "total_users": users_count,
-        }
+        "total_posts": posts_count,
+        "total_comments": comments_count,
+        "total_users": users_count,
     }
 
 
@@ -616,6 +614,7 @@ async def get_current_time(client: AsyncClient) -> dict[str, Any]:
     return data.get("dateTime")
 
 
+# do 3 tasks concurrently
 async def get_stats(request: DRFRequest) -> DRFResponse:
     "Return some common statistics."
     async with AsyncClient() as client:
