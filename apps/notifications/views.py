@@ -20,6 +20,14 @@ from apps.blog.pagination import CustomCursorPagination
 from .models import Notification
 from .serializers import NotificationReadSerializer
 
+# Polling provides a simple logic: client asks a server for some new data every N seconds.
+# It does not require constant connection, unlike SSE or WebSockets.
+# Disadvantages: notifications may arrive with a delay to N seconds;
+# Each client will send a request every N seconds, which could create a large load.
+# Polling is good when interval can be long and time delay is fine.
+# SSE is better when we want to transfer info from server to client instantly.
+# WebSockets are preferrable when we want to create a bi-directional communication.
+
 
 class NotificationViewSet(ViewSet):
     """Notifications ViewSet."""

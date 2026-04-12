@@ -649,6 +649,8 @@ async def get_stats(request: DRFRequest) -> DRFResponse:
     )
 
 
+# SSE is a good choice because the user only wants to listen the server;
+# SSE provides a one-sided nonnection to the client.
 async def post_notifications(
     request: DRFRequest, *args: tuple[Any, ...], **kwargs: dict[str, Any]
 ) -> StreamingHttpResponse:
