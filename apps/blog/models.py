@@ -7,6 +7,7 @@ from django.db.models import (
     TextField,
     ManyToManyField,
     TextChoices,
+    DateTimeField,
 )
 from django.utils.translation import gettext_lazy as _
 
@@ -69,6 +70,7 @@ class Status(TextChoices):
 
     DRAFT = "DR", "Draft"
     PUBLISHED = "PB", "Published"
+    SCHEDULES = "SC", "SCHEDULED"
 
 
 class Post(AbstractBaseModel):
@@ -91,6 +93,11 @@ class Post(AbstractBaseModel):
         choices=Status.choices,
         default=Status.DRAFT,
         max_length=MAX_CODE_LENGTH,
+    )
+    publish_at: DateTimeField = DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="publish_at",
     )
 
     class Meta:

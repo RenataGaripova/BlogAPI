@@ -15,6 +15,7 @@ WSGI_APPLICATION = "settings.wsgi.application"
 ASGI_APPLICATION = "settings.asgi.application"
 AUTH_USER_MODEL = "apps.users.CustomUser"
 
+
 # ----------------------------------------------
 # Apps
 #
@@ -28,6 +29,7 @@ DJANGO_AND_THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "drf_spectacular",
+    "channels",
 ]
 
 PROJECT_APPS = [
@@ -35,6 +37,7 @@ PROJECT_APPS = [
     "apps.blog.apps.BlogConfig",
     "apps.abstracts.apps.AbstractsConfig",
     "apps.core.apps.CoreConfig",
+    "apps.notifications.apps.NotificationsConfig",
 ]
 INSTALLED_APPS = DJANGO_AND_THIRD_PARTY_APPS + PROJECT_APPS
 
@@ -123,3 +126,33 @@ AUTH_USER_MODEL = "users.CustomUser"
 # Emails
 #
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# ----------------------------------------------
+# Channels
+#
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)],
+            "db": REDIS_CHANNELS_DB,  # noqa: F405
+        },
+    },
+}
+
+# ----------------------------------------------
+# Celery Configuration
+#
+CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CELERY_DB}"  # noqa: F405
+# CELERY_BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{BLOG_REDIS_DB}"  # noqa: F405
+CELERY_BROKER_URL = "redis://redis:6379/1"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+
+# ----------------------------------------------
+# URLS
+#
+REDIS_SSE_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_SSE_DB}"  # noqa: F405
+REDIS_CHANNELS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CHANNELS_DB}"  # noqa: F405

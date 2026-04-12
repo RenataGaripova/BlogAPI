@@ -6,7 +6,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_nested.routers import NestedDefaultRouter
 
 # Project modules
-from .views import PostViewSet, CommentViewSet, get_stats
+from .views import PostViewSet, CommentViewSet, get_stats, post_notifications
 
 
 router_v1 = DefaultRouter()
@@ -31,4 +31,5 @@ urlpatterns = [
         get_stats,
         name="stats",
     ),
+    path("posts/stream/", post_notifications, name="posts-stream"),
 ]

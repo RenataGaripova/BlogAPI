@@ -13,6 +13,10 @@ from django.db.models import QuerySet
 from django.core.cache import cache
 from django.utils.translation import gettext as _
 from django.http import JsonResponse
+from django.http.response import StreamingHttpResponse
+from django.db import transaction
+from django.conf import settings
+from redis.asyncio import from_url
 
 # DRF modules
 from rest_framework.viewsets import ViewSet
@@ -40,7 +44,9 @@ from rest_framework.status import (
 # Project modules
 from apps.abstracts.serializers import ErrorDetailSerializer
 from apps.users.models import CustomUser
-from .models import Post, Comment
+from apps.notifications.tasks import process_new_comment
+from .events import publish_post_event
+from .models import Post, Comment, Status
 from .pagination import CustomCursorPagination
 from .serializers import (
     PostReadSerializer,
@@ -48,6 +54,8 @@ from .serializers import (
     CommentSerializer,
 )
 from .permissions import IsAuthorOrReadOnly
+from .tasks import invalidate_post_cache
+
 
 logger = logging.getLogger(__name__)
 
@@ -230,8 +238,10 @@ class PostViewSet(ViewSet):
                 serializer.errors,
             )
             raise
-        serializer.save(author=request.user)
-        self.increase_cache_version()
+        post: Post = serializer.save(author=request.user)
+        if post.status == Status.PUBLISHED:
+            publish_post_event(post)
+        invalidate_post_cache.delay()
         logger.info("New post was created: %s", serializer.validated_data)
         return DRFResponse(
             data=serializer.data,
@@ -304,6 +314,7 @@ class PostViewSet(ViewSet):
             data=request.data,
             partial=True,
         )
+        old_status: Status = post.status
         try:
             serializer.is_valid(raise_exception=True)
         except ValidationError:
@@ -313,8 +324,10 @@ class PostViewSet(ViewSet):
                 serializer.errors,
             )
             raise
-        serializer.save()
-        self.increase_cache_version()
+        post: Post = serializer.save()
+        if old_status != Status.PUBLISHED and post.status == Status.PUBLISHED:
+            publish_post_event(post)
+        invalidate_post_cache.delay()
         logger.info("Post with slug %s was updated.", slug)
         return DRFResponse(
             data=serializer.data,
@@ -406,8 +419,8 @@ class CommentViewSet(ViewSet):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.redis_client = redis.Redis(
-            host="localhost", port=6379, db=0, decode_responses=True
+        self.redis_client = redis.from_url(
+            settings.REDIS_CHANNELS_URL, decode_responses=True
         )
 
     @extend_schema(
@@ -563,9 +576,10 @@ class CommentViewSet(ViewSet):
             "data": serializer.data,
             "user": request.user.id,
         }
-
         self.redis_client.publish(channel, json.dumps(message))
-        serializer.save(author=request.user, post=post)
+
+        comment: Comment = serializer.save(author=request.user, post=post)
+        transaction.on_commit(lambda: process_new_comment.delay(comment.id))
         logger.info("New comment was posted: %s", serializer.validated_data)
         return DRFResponse(
             data=serializer.data,
@@ -632,4 +646,22 @@ async def get_stats(request: DRFRequest) -> DRFResponse:
             "exchange_rates": exchange_rates,
             "current_time": current_time,
         }
+    )
+
+
+async def post_notifications(
+    request: DRFRequest, *args: tuple[Any, ...], **kwargs: dict[str, Any]
+) -> StreamingHttpResponse:
+    """Creates a new event when some post transitions to published."""
+
+    async def event_stream():
+        r = from_url(settings.REDIS_SSE_URL, decode_responses=True)
+        p = r.pubsub()
+        await p.subscribe("posts.published")
+        async for msg in p.listen():
+            if msg and msg["type"] == "message":
+                yield f"data: {msg['data']}\n\n"
+
+    return StreamingHttpResponse(
+        event_stream(), content_type="text/event-stream"
     )

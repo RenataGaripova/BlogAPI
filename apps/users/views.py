@@ -36,8 +36,7 @@ from apps.abstracts.serializers import (
 )
 from .serializers import UserRegistrationSerializer
 from .models import CustomUser
-from .tools import send_registration_email
-
+from .tasks import send_welcome_email
 
 logger = logging.getLogger(__name__)
 
@@ -136,16 +135,13 @@ class CustomUserViewSet(ViewSet):
 
         logger.info("User registered: %s", user.email)
 
-        send_registration_email(
-            subject="Registration.",
-            recipient_list=[
-                response_data.get("email"),
-            ],
+        send_welcome_email.delay(
+            user.id,
+            subject="Welcome to our Blog!",
             context={
-                "receiver_name": f"{response_data.get('first_name')} {response_data.get('first_name')}"
+                "message": "You have successfuly registered on the Blog!",
+                "receiver_name": user.first_name,
             },
-            html_template_name="mails/welcome.html",
-            language=response_data.get("preferred_language") or "en",
         )
 
         return DRFResponse(

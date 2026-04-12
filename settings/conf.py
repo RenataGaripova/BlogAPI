@@ -119,6 +119,18 @@ LOGGING = {
     },
 }
 
+
+# ------------------------------------------------
+# Redis Configuration
+#
+REDIS_HOST = config("BLOG_REDIS_HOST", cast=str, default="localhost")
+REDIS_PORT = config("BLOG_REDIS_PORT", cast=int, default=6379)
+REDIS_CELERY_DB = config("BLOG_REDIS_CELERY_DB", cast=int, default=1)
+BLOG_REDIS_DB = config("BLOG_REDIS_DB", cast=int, default=2)
+REDIS_CHANNELS_DB = config("REDIS_CHANNELS_DB", cast=int, default=3)
+REDIS_CACHE_DB = config("REDIS_CACHE_DB", cast=int, default=4)
+REDIS_SSE_DB = config("REDIS_SSE_DB", cast=int, default=5)
+
 # ----------------------------------------------
 # REDIS
 #
@@ -126,9 +138,15 @@ LOGGING = {
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379",
+        "LOCATION": f"redis://redis:6379/{REDIS_CACHE_DB}",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
     }
 }
+
+# ----------------------------------------------
+# FLOWER
+#
+FLOWER_URL = config("FLOWER_URL", default="http://localhost:5555")
+FLOWER_URL_PREFIX = "flower"
