@@ -1,6 +1,9 @@
+#!/bin/sh
+set -e
+
 echo "Waiting for redis..."
-until redis-cli -u "$REDIS_URL" ping | grep -q PONG; do
-    sleep 2
+until python -c "import redis; redis.Redis.from_url('$REDIS_URL').ping()" 2>/dev/null; do
+  sleep 2
 done
 echo "Redis is available!"
 

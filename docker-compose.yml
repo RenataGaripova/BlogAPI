@@ -5,15 +5,30 @@ services:
       - "6379:6379"
   web:
     build: .
-    ports:
-      - "8000:8000"
     env_file: settings/.env
     volumes:
       - sqlite_db:/app/db
+      - static:/app/staticfiles
+      - media:/app/media
     depends_on:
       - redis
     command:
-      - daphne -b 0.0.0.0 -p 8000 settings.asgi:application
+      - daphne
+      - -b
+      - 0.0.0.0
+      - -p
+      - "8000"
+      - settings.asgi:application
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - static:/var/www/static:ro
+      - media:/var/www/media:ro
+    depends_on:
+      - web
   celery_worker:
     build: .
     env_file: settings/.env
@@ -38,3 +53,5 @@ services:
 
 volumes:
   sqlite_db:
+  static:
+  media:
